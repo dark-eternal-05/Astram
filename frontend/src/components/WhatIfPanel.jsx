@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import axios from "axios";
 
 const API = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+
+const PRIORITY_SCORE = {
+  low: 25,
+  medium: 50,
+  high: 75,
+  critical: 100,
+};
 
 export default function WhatIfPanel({ prediction }) {
   const [form, setForm] = useState({
@@ -21,6 +28,32 @@ export default function WhatIfPanel({ prediction }) {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const originalScenario = useMemo(
+    () => ({
+      impact_score: prediction?.impact_score ?? 0,
+      closure_probability: prediction?.closure_probability ?? 0,
+      priority: prediction?.priority ?? "medium",
+      expected_crowd_size: 18000,
+      event_duration_hours: prediction?.expected_duration_hours_p50 ?? 0,
+      peak_hour: true,
+      nearby_sensitive_zone: true,
+    }),
+    [prediction]
+  );
+
+  const modifiedScenario = useMemo(
+    () => ({
+      expected_crowd_size: Number(form.expected_crowd_size) || 0,
+      event_duration_hours: Number(form.event_duration_hours) || 0,
+      impact_score: Number(form.impact_score) || 0,
+      closure_probability: Number(form.closure_probability) || 0,
+      priority: form.priority,
+      peak_hour: Boolean(form.peak_hour),
+      nearby_sensitive_zone: Boolean(form.nearby_sensitive_zone),
+    }),
+    [form]
+  );
+
   const runWhatIf = async () => {
     if (!prediction) {
       alert("Run Demo Scenario or Video Intelligence first.");
@@ -31,24 +64,8 @@ export default function WhatIfPanel({ prediction }) {
 
     try {
       const response = await axios.post(`${API}/what-if`, {
-        original_scenario: {
-          impact_score: prediction.impact_score,
-          closure_probability: prediction.closure_probability,
-          priority: prediction.priority,
-          expected_crowd_size: 18000,
-          event_duration_hours: prediction.expected_duration_hours_p50,
-          peak_hour: true,
-          nearby_sensitive_zone: true,
-        },
-        modifications: {
-          expected_crowd_size: Number(form.expected_crowd_size),
-          event_duration_hours: Number(form.event_duration_hours),
-          impact_score: Number(form.impact_score),
-          closure_probability: Number(form.closure_probability),
-          priority: form.priority,
-          peak_hour: Boolean(form.peak_hour),
-          nearby_sensitive_zone: Boolean(form.nearby_sensitive_zone),
-        },
+        original_scenario: originalScenario,
+        modifications: modifiedScenario,
       });
 
       setResult(response.data);
@@ -59,32 +76,17 @@ export default function WhatIfPanel({ prediction }) {
     }
   };
 
-  const originalInput = {
-    expected_crowd_size: 18000,
-    event_duration_hours: prediction?.expected_duration_hours_p50 || 0,
-    impact_score: prediction?.impact_score || 0,
-    closure_probability: prediction?.closure_probability || 0,
-    peak_hour: true,
-    nearby_sensitive_zone: true,
-  };
-
-  const modifiedInput = {
-    expected_crowd_size: Number(form.expected_crowd_size),
-    event_duration_hours: Number(form.event_duration_hours),
-    impact_score: Number(form.impact_score),
-    closure_probability: Number(form.closure_probability),
-    peak_hour: form.peak_hour ? 1 : 0,
-    nearby_sensitive_zone: form.nearby_sensitive_zone ? 1 : 0,
-  };
-
   return (
-    <div className="card">
-      <h2>What-If Simulator</h2>
-
-      <p>
-        Manually change traffic conditions and compare every modified parameter
-        against the current scenario.
-      </p>
+    <div className="card whatif-card">
+      <div className="section-header">
+        <div>
+          <h2>What-If Simulator</h2>
+          <p>
+            Adjust traffic conditions and compare the changed scenario with the
+            active forecast through visual bars.
+          </p>
+        </div>
+      </div>
 
       <div className="whatif-form">
         <Input
@@ -140,7 +142,7 @@ export default function WhatIfPanel({ prediction }) {
           </select>
         </label>
 
-        <label className="field">
+        <label className="field full-field">
           <span>Nearby Sensitive Zone</span>
           <select
             value={String(form.nearby_sensitive_zone)}
@@ -154,58 +156,48 @@ export default function WhatIfPanel({ prediction }) {
         </label>
       </div>
 
-      <InputComparisonCharts
-        original={originalInput}
-        modified={modifiedInput}
-      />
-
       <button className="primary-btn" onClick={runWhatIf} disabled={loading}>
         {loading ? "Running..." : "Run What-If"}
       </button>
 
       {result && (
         <div className="whatif-result">
-          <h3>What-If Result</h3>
+          <h3>Operational Impact Graphs</h3>
 
-          <div className="comparison-strip">
-            <div>
-              <span>Original Risk</span>
-              <strong>{result.comparison.risk_level_change.from}</strong>
-            </div>
+          <ScenarioCharts original={originalScenario} modified={modifiedScenario} />
 
-            <div>
-              <span>Modified Risk</span>
-              <strong>{result.comparison.risk_level_change.to}</strong>
-            </div>
-          </div>
+          <RiskShiftChart
+            original={result.comparison.risk_level_change.from}
+            modified={result.comparison.risk_level_change.to}
+          />
 
           <GroupedBars
             title="Resource Deployment Change"
             rows={[
-              [
-                "Manpower",
-                result.original_plan.manpower,
-                result.modified_plan.manpower,
-                60,
-              ],
-              [
-                "Barricades",
-                result.original_plan.barricades,
-                result.modified_plan.barricades,
-                40,
-              ],
-              [
-                "Patrol",
-                result.original_plan.patrol_units,
-                result.modified_plan.patrol_units,
-                15,
-              ],
-              [
-                "Emergency",
-                result.original_plan.emergency_units,
-                result.modified_plan.emergency_units,
-                8,
-              ],
+              {
+                label: "Manpower",
+                original: result.original_plan.manpower,
+                modified: result.modified_plan.manpower,
+                max: Math.max(result.original_plan.manpower, result.modified_plan.manpower, 1),
+              },
+              {
+                label: "Barricades",
+                original: result.original_plan.barricades,
+                modified: result.modified_plan.barricades,
+                max: Math.max(result.original_plan.barricades, result.modified_plan.barricades, 1),
+              },
+              {
+                label: "Patrol Units",
+                original: result.original_plan.patrol_units,
+                modified: result.modified_plan.patrol_units,
+                max: Math.max(result.original_plan.patrol_units, result.modified_plan.patrol_units, 1),
+              },
+              {
+                label: "Emergency Units",
+                original: result.original_plan.emergency_units,
+                modified: result.modified_plan.emergency_units,
+                max: Math.max(result.original_plan.emergency_units, result.modified_plan.emergency_units, 1),
+              },
             ]}
           />
         </div>
@@ -214,19 +206,21 @@ export default function WhatIfPanel({ prediction }) {
   );
 }
 
-function InputComparisonCharts({ original, modified }) {
+function ScenarioCharts({ original, modified }) {
   const rows = [
     {
       label: "Crowd Size",
       original: original.expected_crowd_size,
       modified: modified.expected_crowd_size,
-      max: 50000,
+      max: Math.max(original.expected_crowd_size, modified.expected_crowd_size, 1),
+      format: compactNumber,
     },
     {
       label: "Duration",
       original: original.event_duration_hours,
       modified: modified.event_duration_hours,
-      max: 24,
+      max: Math.max(original.event_duration_hours, modified.event_duration_hours, 1),
+      suffix: "h",
     },
     {
       label: "Impact Score",
@@ -242,80 +236,143 @@ function InputComparisonCharts({ original, modified }) {
       suffix: "%",
     },
     {
+      label: "Priority",
+      original: PRIORITY_SCORE[original.priority] ?? 50,
+      modified: PRIORITY_SCORE[modified.priority] ?? 50,
+      max: 100,
+      originalDisplay: capitalize(original.priority),
+      modifiedDisplay: capitalize(modified.priority),
+    },
+    {
       label: "Peak Hour",
-      original: original.peak_hour ? 1 : 0,
-      modified: modified.peak_hour ? 1 : 0,
-      max: 1,
-      boolean: true,
+      original: original.peak_hour ? 100 : 0,
+      modified: modified.peak_hour ? 100 : 0,
+      max: 100,
+      originalDisplay: original.peak_hour ? "Yes" : "No",
+      modifiedDisplay: modified.peak_hour ? "Yes" : "No",
     },
     {
       label: "Sensitive Zone",
-      original: original.nearby_sensitive_zone ? 1 : 0,
-      modified: modified.nearby_sensitive_zone ? 1 : 0,
-      max: 1,
-      boolean: true,
+      original: original.nearby_sensitive_zone ? 100 : 0,
+      modified: modified.nearby_sensitive_zone ? 100 : 0,
+      max: 100,
+      originalDisplay: original.nearby_sensitive_zone ? "Yes" : "No",
+      modifiedDisplay: modified.nearby_sensitive_zone ? "Yes" : "No",
     },
   ];
 
   return (
     <div className="parameter-chart-section">
-      <h3>Manual Parameter Comparison</h3>
+      <div className="chart-title-row">
+        <h3>Manual Parameter Graphs</h3>
+        <div className="chart-legend">
+          <span className="legend-original">Original</span>
+          <span className="legend-modified">Modified</span>
+        </div>
+      </div>
 
       <div className="parameter-chart-grid">
         {rows.map((row) => (
-          <ParameterMiniChart key={row.label} row={row} />
+          <ParameterChart key={row.label} row={row} />
         ))}
       </div>
     </div>
   );
 }
 
-function ParameterMiniChart({ row }) {
-  const originalWidth = Math.min((row.original / row.max) * 100, 100);
-  const modifiedWidth = Math.min((row.modified / row.max) * 100, 100);
-
-  const originalValue = row.boolean
-    ? row.original
-      ? "Yes"
-      : "No"
-    : `${row.original}${row.suffix || ""}`;
-
-  const modifiedValue = row.boolean
-    ? row.modified
-      ? "Yes"
-      : "No"
-    : `${row.modified}${row.suffix || ""}`;
+function ParameterChart({ row }) {
+  const originalWidth = getWidth(row.original, row.max);
+  const modifiedWidth = getWidth(row.modified, row.max);
+  const originalValue = row.originalDisplay ?? formatValue(row.original, row);
+  const modifiedValue = row.modifiedDisplay ?? formatValue(row.modified, row);
 
   return (
     <div className="parameter-chart-card">
       <div className="parameter-chart-head">
         <strong>{row.label}</strong>
-        <span>
-          {originalValue} → {modifiedValue}
-        </span>
       </div>
 
-      <div className="mini-bar-line">
-        <span>Original</span>
-        <div className="bar-track">
-          <div
-            className="bar-fill original-bar"
-            style={{ width: `${originalWidth}%` }}
-          />
-        </div>
-        <strong>{originalValue}</strong>
+      <BarLine label="Original" value={originalValue} width={originalWidth} type="original" />
+      <BarLine label="Modified" value={modifiedValue} width={modifiedWidth} type="modified" />
+    </div>
+  );
+}
+
+function RiskShiftChart({ original, modified }) {
+  const riskScore = {
+    low: 25,
+    medium: 50,
+    high: 75,
+    critical: 100,
+  };
+
+  return (
+    <div className="parameter-chart-card wide-chart-card">
+      <div className="parameter-chart-head">
+        <strong>Risk Level Shift</strong>
       </div>
 
-      <div className="mini-bar-line">
-        <span>Modified</span>
-        <div className="bar-track">
-          <div
-            className="bar-fill modified-bar"
-            style={{ width: `${modifiedWidth}%` }}
-          />
+      <BarLine
+        label="Original"
+        value={capitalize(original)}
+        width={riskScore[String(original).toLowerCase()] ?? 50}
+        type="original"
+      />
+      <BarLine
+        label="Modified"
+        value={capitalize(modified)}
+        width={riskScore[String(modified).toLowerCase()] ?? 50}
+        type="modified"
+      />
+    </div>
+  );
+}
+
+function GroupedBars({ title, rows }) {
+  return (
+    <div className="group-chart">
+      <div className="chart-title-row">
+        <h3>{title}</h3>
+        <div className="chart-legend">
+          <span className="legend-original">Original</span>
+          <span className="legend-modified">Modified</span>
         </div>
-        <strong>{modifiedValue}</strong>
       </div>
+
+      <div className="resource-chart-grid">
+        {rows.map((row) => (
+          <div className="parameter-chart-card" key={row.label}>
+            <div className="parameter-chart-head">
+              <strong>{row.label}</strong>
+            </div>
+
+            <BarLine
+              label="Original"
+              value={row.original}
+              width={getWidth(row.original, row.max)}
+              type="original"
+            />
+            <BarLine
+              label="Modified"
+              value={row.modified}
+              width={getWidth(row.modified, row.max)}
+              type="modified"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BarLine({ label, value, width, type }) {
+  return (
+    <div className="bar-line">
+      <span>{label}</span>
+      <div className="bar-track">
+        <div className={`bar-fill ${type}-bar`} style={{ width: `${width}%` }} />
+      </div>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -334,50 +391,27 @@ function Input({ label, value, onChange, type = "text", step }) {
   );
 }
 
-function GroupedBars({ title, rows }) {
-  return (
-    <div className="group-chart">
-      <h3>{title}</h3>
+function getWidth(value, max) {
+  if (!Number.isFinite(Number(value)) || !Number.isFinite(Number(max)) || Number(max) <= 0) {
+    return 0;
+  }
 
-      <div className="chart-legend">
-        <span className="legend-original">Original</span>
-        <span className="legend-modified">Modified</span>
-      </div>
+  return Math.max(4, Math.min((Number(value) / Number(max)) * 100, 100));
+}
 
-      {rows.map(([label, original, modified, max]) => (
-        <div className="comparison-row" key={label}>
-          <div className="comparison-label">
-            <strong>{label}</strong>
-            <span>
-              {original} → {modified}
-            </span>
-          </div>
+function formatValue(value, row) {
+  const formatter = row.format ?? ((v) => v);
+  return `${formatter(value)}${row.suffix || ""}`;
+}
 
-          <div className="comparison-bars">
-            <div className="bar-line">
-              <span>Original</span>
-              <div className="bar-track">
-                <div
-                  className="bar-fill original-bar"
-                  style={{ width: `${Math.min((original / max) * 100, 100)}%` }}
-                />
-              </div>
-              <strong>{original}</strong>
-            </div>
+function compactNumber(value) {
+  return new Intl.NumberFormat("en-IN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value) || 0);
+}
 
-            <div className="bar-line">
-              <span>Modified</span>
-              <div className="bar-track">
-                <div
-                  className="bar-fill modified-bar"
-                  style={{ width: `${Math.min((modified / max) * 100, 100)}%` }}
-                />
-              </div>
-              <strong>{modified}</strong>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+function capitalize(value) {
+  if (!value) return "—";
+  return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
