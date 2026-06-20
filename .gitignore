@@ -1,131 +1,22 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# ── Python ────────────────────────────────────────────
+# Python
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
-eggs/
-parts/
-var/
-sdist/
-develop-eggs/
-.installed.cfg
-lib/
-lib64/
-
-# ── Virtual Environment ───────────────────────────────
-venv/
+*.pyc
 .venv/
-env/
-ENV/
-
-# ── Jupyter Notebooks ─────────────────────────────────
-.ipynb_checkpoints/
-*.ipynb
-
-# ── ML Models & Training Artifacts ───────────────────
-models/*.h5
-models/*.keras
-models/*.pkl
-models/*.pt
-models/*.pth
-models/training_loss.png
-models/anomaly_detection_results.png
-
-# ── Data Files ────────────────────────────────────────
-data/*.csv
-data/*.npy
-data/*.parquet
-data/*.json
-data/*.zip
-data/*.tgz
-data/*.png
-
-# ── Spark ─────────────────────────────────────────────
-spark-warehouse/
-derby.log
-metastore_db/
-*.crc
-_spark_metadata/
-
-# ── Kafka ─────────────────────────────────────────────
-kafka/logs/
-kafka/__consumer_offsets/
-
-# ── Airflow ───────────────────────────────────────────
-airflow/logs/
-airflow/airflow.db
-airflow/airflow.cfg
-airflow/webserver_config.py
-airflow/airflow.pid
-airflow/*.db
-*.db
-
-# ── React / Node ──────────────────────────────────────
-frontend/dashboard/node_modules/
-frontend/dashboard/dist/
-frontend/dashboard/build/
-frontend/dashboard/.vite/
-*.local
-
-# ── Environment Variables ─────────────────────────────
+venv/
 .env
-.env.local
-.env.production
-.env.development
-*.env
 
-# ── IDE & OS ──────────────────────────────────────────
-.vscode/
-.idea/
-*.swp
-*.swo
+# Node
+node_modules/
+dist/
+.env.local
+
+# OS
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# ── Logs ──────────────────────────────────────────────
-*.log
-logs/
-*.pid
+# Uploaded runtime data
+backend/app/data/uploads/
+backend/app/data/chroma/
 
-# ── Ivy / Maven Cache (Spark JAR downloads) ───────────
-.ivy2/
-.m2/
-
-# ── Temporary Files ───────────────────────────────────
-*.tmp
-*.temp
-tmp/
-temp/
-debug_spark.py
-test_spark.py
+# Keep model only if small enough for GitHub
+# If model is too large, use Git LFS
