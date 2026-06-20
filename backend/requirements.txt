@@ -1,0 +1,17 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+python-dotenv==1.0.1
+python-multipart==0.0.20
+
+chromadb==0.5.23
+networkx==3.4.2
+
+pandas==2.2.3
+numpy==2.0.2
+joblib==1.4.2
+scikit-learn==1.6.1
+scipy==1.14.1
+pulp==2.9.0
+
+opencv-python==4.10.0.84
