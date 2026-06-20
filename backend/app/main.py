@@ -51,8 +51,10 @@ what_if_simulator = WhatIfSimulator()
 
 try:
     forecasting_model = ASTRaMModelWrapper()
-except FileNotFoundError:
+    model_load_error = None
+except Exception as exc:
     forecasting_model = None
+    model_load_error = repr(exc)
 
 
 @app.get("/health")
@@ -62,6 +64,7 @@ def health_check():
         "service": "ASTRaM Backend",
         "version": "0.3.0",
         "model_loaded": forecasting_model is not None,
+        "model_load_error": model_load_error,
     }
 
 
