@@ -1,22 +1,18 @@
 from typing import Any
+
 import chromadb
+from chromadb.config import Settings
 
 
 class HistoricalMemory:
-    """
-    ChromaDB layer for retrieving similar past traffic events.
-
-    Used only for:
-    - similar event retrieval
-    - past resource deployment retrieval
-    - past diversion effectiveness retrieval
-    - operator explanation
-
-    Not used for prediction or optimization.
-    """
-
     def __init__(self, persist_path: str = "app/data/chroma"):
-        self.client = chromadb.PersistentClient(path=persist_path)
+        self.client = chromadb.PersistentClient(
+            path=persist_path,
+            settings=Settings(
+                anonymized_telemetry=False
+            ),
+        )
+
         self.collection = self.client.get_or_create_collection(
             name="historical_events"
         )
